@@ -1,0 +1,18 @@
+---
+title: "help"
+author: "Roman Hüppi"
+date: "17th August 2018"
+output: html_document
+---
+
+## Purpose
+
+Use this estimated minimal detectable flux for gasfluxes `kappa.max` selection method or to publish the accuary of your flux results.
+
+see:  http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0200876
+
+### Background concentrations
+
+* N<sub>2</sub>O: 330 ppb
+* CO<sub>2</sub>: 400 ppm
+* CH<sub>4</sub>:  1.8 ppm
