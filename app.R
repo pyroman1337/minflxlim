@@ -1,12 +1,10 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
+###########################################################################
+# Simulation of minimal detectable flux for static chamber measurements  ##
+#                        a shiny web app                                  #
+# by Roman Hüppi, August 2018, roman.hueppi@usys.ethz.ch                  #
+###########################################################################
 
+# load libraries ----------------------------------------------------------
 library(shiny)
 library(gasfluxes)
 library(ggplot2)
@@ -20,7 +18,7 @@ numericInput3<-function (inputId, label, value = "",...)
       tags$input(id = inputId, type = "number", value = value,...))
 }
 
-# Define UI for application that draws a histogram
+# Define UI for application that draws a historgam
 ui <- fluidPage(
    
    # Application title
@@ -34,6 +32,12 @@ ui <- fluidPage(
                      min = 10,
                      max = 5000,
                      value = 100),
+         
+         radioButtons("method", "Choose regression method",
+                      choices = c("non-linear (HMR)" = "HMR",
+                                  "robust-linear" = "linear"),
+                      selected = 'HMR'),
+         
          h4("Please provide the input about your GHG chamber system"),
          
          numericInput(inputId="GC.sd", label=HTML("GC.sd [ppb]"), value = 5, width = 100),         
@@ -41,7 +45,7 @@ ui <- fluidPage(
          textInput(inputId="timing",label="sample timing [h]", value = "0; 0.25; 0.5; 0.75"),
          helpText("Enter the time of your samples separated by semicolon",
                  "in the unit of your choice but prefereably hours",
-                 "(number of samples supported from 2 to n)"),
+                 "(number of samples supported from 4 to n)"),
          numericInput3(inputId="area", label=HTML("chamber area &emsp; [m<sup>2</sup>]"), value = 0.0491, width = 100),
          numericInput3(inputId="volume", label=HTML("chamber volume [m<sup>3</sup>]"), value = 0.00245, width = 100),
          
@@ -67,9 +71,9 @@ ui <- fluidPage(
           ),
           tabPanel(p(icon("question-circle"), "Help"),
                    includeMarkdown("help.Rmd")
-          )  ## maybe not "hahahah"
+          ) 
         )  
-      )
+      )  # end main panel
    )
 )
 
@@ -93,7 +97,7 @@ server <- function(input, output) {
      species.mol <- switch(input$gas.species,
                       "N2O" = 44,  # g/mol
                       "CO2" = 44,  # g/mol
-                      "CH4" = 14)  # g/mol
+                      "CH4" = 16)  # g/mol
  
      C0   <- C0.ppb      * species.mol * 273.15 / 22.4 / (273.15 + 15) #mg / m^3 at 15°C for N2O/CH4
      sdGC <- input$GC.sd * species.mol * 273.15 / 22.4 / (273.15 + 15) #mg / m^3 
@@ -102,16 +106,27 @@ server <- function(input, output) {
      
      ## hungary chambers: A = 0.0491, V =	0.00245
      
-     sim <- data.frame(t = t, C = rnorm(length(t)*input$sims, mean = C0, sd = sdGC), 
+     sim <- data.frame(t = t, C = abs(rnorm(length(t)*input$sims, mean = C0, sd = sdGC)), 
                        # id = rep(1:1e3, each = 4), A = 0.0491, V = 0.00245)  # Hungary
                        id = rep(1:input$sims, each = length(t)), A = input$area, V = input$volume)  # Trier (mean)
      
-     simflux <- gasfluxes(sim, .id = "id", .times = "t", methods = c("linear","HMR"), plot = FALSE) 
-     simflux[, f0 := HMR.f0]
-     simflux[is.na(f0), f0 := linear.f0]
+     if(input$method == "HMR"){
+       simflux <- gasfluxes(sim, .id = "id", .times = "t", verbose = FALSE,
+                            methods = c("robust linear","HMR"), plot = FALSE) 
+       simflux[, f0 := HMR.f0]
+       simflux[is.na(f0), f0 := robust.linear.f0]
+       n.HMR <- simflux[!is.na(HMR.f0), .N] #
+     } 
+     
+     if(input$method == "linear"){
+       simflux <- gasfluxes(sim, .id = "id", .times = "t", verbose = FALSE,
+                            methods = c("robust linear"), plot = FALSE) 
+       simflux[, f0 := robust.linear.f0]
+       n.HMR <- 0
+     } 
+     
      f.detect <<- simflux[, quantile(f0, 0.975)] #0
      # f.detect
-     n.HMR <- simflux[!is.na(HMR.f0), .N] #
      flxlim.out <- list(f.detect = f.detect, n.HMR = n.HMR, simflux = simflux)  
      # }, once = F)  # 
      
@@ -153,14 +168,14 @@ server <- function(input, output) {
    
    output$value <- renderPrint({
      input$gasfluxes.go
-     # flux.unit  <- switch(input$gas.species,
-     #                      "N2O" = expression(paste("mg ",CO_2*m^2*h^2)), 
-     #                      "CO2" = "[ g CO<sub>2</sub> m<sup>-2</sub> h<sup>-1</sub> ]", 
-     #                      "CH4" = "[mg CH<sub>4</sub> m<sup>-2</sub> h<sup>-1</sub> ]")
-     # 
      isolate({
+       
+     flux.unit  <- switch(input$gas.species,
+                          "N2O" = "[mg N2O/m^2/h ]", 
+                          "CO2" = "[mg CO2/m^2/h ]", 
+                          "CH4" = "[mg CH4/m^2/h ]")
        invisible(print("Estimated minimal detectable flux:"));
-       print(flxlim.sim()$f.detect); # print(flux.unit);
+       print(flxlim.sim()$f.detect);print(flux.unit); # print(flux.unit);
        print("Number of HMR fluxes detected:");flxlim.sim()$n.HMR})
      })
    
