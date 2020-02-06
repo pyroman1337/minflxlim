@@ -1,9 +1,4 @@
----
-title: "help"
-author: "Roman Hüppi"
-date: "17th August 2018"
-output: html_document
----
+# Minimal detectable flux estimator
 
 ## Purpose
 
