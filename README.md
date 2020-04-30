@@ -23,9 +23,9 @@ The [`gasfluxes` package](https://cran.r-project.org/web/packages/gasfluxes) is 
 
 insert all GC.sd values in ppb!
 
-### Source code
+### SAE interactive data shiny server
 
-Find the code for [this app on GitHub](https://github.com/pyroman1337/minflxlim)
+Find [this app on our SAE server](https://sae-interactive-data.ethz.ch/minflxlim/)
 
 Issues and suggestions can be contributed on GitHub.
 
